@@ -2,7 +2,6 @@ from collections import defaultdict, Mapping
 from multiprocessing.pool import ThreadPool
 from funcsigs import signature
 from functools import wraps
-from bottle import run, request, route, ServerAdapter
 import hashlib
 import json
 import Queue
@@ -15,6 +14,8 @@ import time
 from waitress.server import create_server
 import yaml
 
+from bottle import run, request, route, ServerAdapter
+import flask
 
 _task_list = {}
 _global_queue = Queue.Queue()
@@ -23,6 +24,7 @@ _global_queue_shutdown = False
 _background_queue_shutdown = False
 _server = None
 
+app = flask.Flask('riggerlib')
 
 def generate_random_string(size=8):
     size = int(size)
@@ -63,12 +65,12 @@ class Task():
         return self._tid
 
 
-@route('/terminate/')
+@app.route('/terminate/')
 def terminate():
     shutdown()
 
 
-@route('/fire_hook/', method='POST')
+@app.route('/fire_hook/', method='POST')
 def fire_hook():
     json_dict = request.json
     if json_dict['hook_name'] == "terminate":
@@ -85,7 +87,7 @@ def fire_hook():
     return(resp)
 
 
-@route('/task_check/', method='POST')
+@app.route('/task_check/', method='POST')
 def task_check():
     json_dict = request.json
     tid = json_dict['tid']
@@ -248,7 +250,7 @@ class Rigger(object):
         if self._server_enable:
             _server = RatBag(host=self._server_hostname,
                              port=self._server_port)
-            server_thread = threading.Thread(target=run,
+            server_thread = threading.Thread(target=rpp.run,
                                              kwargs=dict(server=_server, quiet=True))
             # Good for debugging
             # server_thread = threading.Thread(target=run, kwargs=dict(host=self._server_hostname,
